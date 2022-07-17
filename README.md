@@ -14,6 +14,6 @@ https://www.amazon.com/dp/B07FK9NMQV
 
 ### USB-to-RS232 cable
 
-![USB-to-RS232 cable](./.README/61ASVw1jt6L._AC_SL1500_.jpg?raw=true)
+<img src="./.README/61ASVw1jt6L._AC_SL1500_.jpg?raw=true" width="300px">
 
 https://www.amazon.com/dp/B07589ZF9X
