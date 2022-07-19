@@ -1,4 +1,4 @@
-module github.com/eric/iogear-control
+module github.com/eric/iogearcontrol
 
 go 1.18
 
