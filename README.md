@@ -6,10 +6,10 @@ Simple tool to control IOGear HDMI switcher over RS232
 
 Specify the port to switch to as the first argument:
 
-    ~/src/iogearcontrol/cmd/iogear-control > ./iogear-control 1
+    ~/src/iogearcontrol/cmd/iogear-control $ ./iogear-control 1
     Found port: /dev/cu.usbserial-AB0MSUVK
     map[F/W:V1.1.103 Input:port  1 Mode:NEXT Output:ON Pod:OFF]
-    ~/src/iogearcontrol/cmd/iogear-control >
+    ~/src/iogearcontrol/cmd/iogear-control $
 
 
 ## Tested With
