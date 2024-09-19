@@ -63,7 +63,16 @@ func (hs *HDMISwitcher) Send(command string) (string, error) {
 		builder.Write(buf[:n])
 	}
 
-	status, response, _ := strings.Cut(builder.String(), "\r\n")
+	str := builder.String()
+	if len(str) == 0 {
+		return "", fmt.Errorf("read an empty response")
+	}
+
+	status, response, ok := strings.Cut(str, "\r\n")
+	if !ok {
+		return response, fmt.Errorf("failed to parse response: %v", str)
+	}
+
 	result := status[len(command):]
 	if result != "Command OK" {
 		return response, fmt.Errorf("failed to send command: %s", status)
@@ -74,6 +83,24 @@ func (hs *HDMISwitcher) Send(command string) (string, error) {
 
 func (hs *HDMISwitcher) Switch(input int) error {
 	_, err := hs.Send(fmt.Sprintf("sw i%02d", input))
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (hs *HDMISwitcher) Off() error {
+	_, err := hs.Send("sw off")
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (hs *HDMISwitcher) On() error {
+	_, err := hs.Send("sw on")
 	if err != nil {
 		return err
 	}
