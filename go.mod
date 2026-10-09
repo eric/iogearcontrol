@@ -1,8 +1,11 @@
 module github.com/eric/iogearcontrol
 
-go 1.18
+go 1.23
 
-require go.bug.st/serial v1.3.5
+require (
+	github.com/coder/websocket v1.8.15
+	go.bug.st/serial v1.3.5
+)
 
 require (
 	github.com/creack/goselect v0.1.2 // indirect

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -10,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/coder/websocket"
 	"github.com/eric/iogearcontrol"
 )
 
@@ -27,10 +29,16 @@ type server struct {
 	connected bool
 	lastErr   string
 	updated   time.Time
+
+	// subscribers receive the status whenever the input, output, or
+	// connection state changes.
+	subscribersMu sync.Mutex
+	subscribers   map[chan []byte]struct{}
+	lastNotified  string
 }
 
 func serve(tty, listen string, pollInterval time.Duration) error {
-	s := &server{tty: tty}
+	s := &server{tty: tty, subscribers: make(map[chan []byte]struct{})}
 
 	go func() {
 		s.refresh()
@@ -41,6 +49,7 @@ func serve(tty, listen string, pollInterval time.Duration) error {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/status", s.handleStatus)
+	mux.HandleFunc("/ws", s.handleWebSocket)
 	mux.HandleFunc("/switch/", s.handleSwitch)
 	mux.HandleFunc("/on", s.handleCommand(func(hs *iogearcontrol.HDMISwitcher) error { return hs.On() }))
 	mux.HandleFunc("/off", s.handleCommand(func(hs *iogearcontrol.HDMISwitcher) error { return hs.Off() }))
@@ -81,24 +90,60 @@ func (s *server) refresh() {
 	})
 
 	s.stateMu.Lock()
-	defer s.stateMu.Unlock()
-
 	if err != nil {
 		if s.connected || s.lastErr != err.Error() {
 			log.Printf("Status failed: %v", err)
 		}
 		s.connected = false
 		s.lastErr = err.Error()
+	} else {
+		if !s.connected {
+			log.Printf("Connected: %v", status)
+		}
+		s.status = status
+		s.connected = true
+		s.lastErr = ""
+		s.updated = time.Now()
+	}
+	s.stateMu.Unlock()
+
+	s.notifyIfChanged()
+}
+
+// notifyIfChanged pushes the status to subscribers when something they
+// care about changed, rather than on every poll.
+func (s *server) notifyIfChanged() {
+	snapshot := s.snapshot()
+	key := fmt.Sprint(snapshot["connected"], snapshot["Input"], snapshot["Output"])
+
+	s.subscribersMu.Lock()
+	defer s.subscribersMu.Unlock()
+
+	if key == s.lastNotified {
 		return
 	}
+	s.lastNotified = key
 
-	if !s.connected {
-		log.Printf("Connected: %v", status)
+	data, err := json.Marshal(snapshot)
+	if err != nil {
+		return
 	}
-	s.status = status
-	s.connected = true
-	s.lastErr = ""
-	s.updated = time.Now()
+	for ch := range s.subscribers {
+		sendLatest(ch, data)
+	}
+}
+
+// sendLatest delivers data without blocking, replacing any message the
+// subscriber has not picked up yet: only the newest status matters.
+func sendLatest(ch chan []byte, data []byte) {
+	select {
+	case <-ch:
+	default:
+	}
+	select {
+	case ch <- data:
+	default:
+	}
 }
 
 // snapshot returns the last known status. The switcher's own fields
@@ -133,6 +178,47 @@ func (s *server) handleStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.writeStatus(w, http.StatusOK)
+}
+
+// handleWebSocket sends the current status on connect, then again each
+// time it changes. Commands still go over HTTP.
+func (s *server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
+	conn, err := websocket.Accept(w, r, nil)
+	if err != nil {
+		return
+	}
+	defer conn.CloseNow()
+
+	ch := make(chan []byte, 1)
+	s.subscribersMu.Lock()
+	s.subscribers[ch] = struct{}{}
+	s.subscribersMu.Unlock()
+	defer func() {
+		s.subscribersMu.Lock()
+		delete(s.subscribers, ch)
+		s.subscribersMu.Unlock()
+	}()
+
+	if data, err := json.Marshal(s.snapshot()); err == nil {
+		sendLatest(ch, data)
+	}
+
+	// Nothing is expected from clients; CloseRead handles pings and
+	// cancels ctx when the client goes away.
+	ctx := conn.CloseRead(r.Context())
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case data := <-ch:
+			writeCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+			err := conn.Write(writeCtx, websocket.MessageText, data)
+			cancel()
+			if err != nil {
+				return
+			}
+		}
+	}
 }
 
 func (s *server) handleSwitch(w http.ResponseWriter, r *http.Request) {

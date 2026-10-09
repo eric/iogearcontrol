@@ -26,6 +26,12 @@ seconds, and exposes it over HTTP on `127.0.0.1:8341`:
 Every endpoint returns the latest status. Use `-listen` and `-poll` to
 change the address and interval.
 
+`ws://127.0.0.1:8341/ws` sends the status as JSON on connect and again
+whenever the input, output, or connection state changes.
+
+While the server is running it holds the serial port, so the
+command-line forms above go through it automatically.
+
 To run it at login, install the binary and load the LaunchAgent:
 
     $ go install ./cmd/iogear-control
