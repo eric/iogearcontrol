@@ -11,6 +11,28 @@ Specify the port to switch to as the first argument:
     map[F/W:V1.1.103 Input:port  1 Mode:NEXT Output:ON Pod:OFF]
     ~/src/iogearcontrol/cmd/iogear-control $
 
+## Server
+
+`serve` keeps the serial port open, reads the switcher status every 2
+seconds, and exposes it over HTTP on `127.0.0.1:8341`:
+
+    $ iogear-control serve
+    $ curl http://127.0.0.1:8341/status
+    {"F/W":"V1.1.103","Input":"port  3","Mode":"NEXT","Output":"ON","Pod":"OFF","connected":true,"error":"","updated":"..."}
+    $ curl -X POST http://127.0.0.1:8341/switch/1
+    $ curl -X POST http://127.0.0.1:8341/off
+    $ curl -X POST http://127.0.0.1:8341/on
+
+Every endpoint returns the latest status. Use `-listen` and `-poll` to
+change the address and interval.
+
+To run it at login, install the binary and load the LaunchAgent:
+
+    $ go install ./cmd/iogear-control
+    $ cp launchd/com.eric.iogear-control.plist ~/Library/LaunchAgents/
+    $ launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.eric.iogear-control.plist
+
+Logs go to `~/Library/Logs/iogear-control.log`.
 
 ## Tested With
 

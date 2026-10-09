@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.eric.iogear-control</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/Users/eric/go/bin/iogear-control</string>
+		<string>-tty</string>
+		<string>/dev/cu.usbserial-AB0MSUVK</string>
+		<string>serve</string>
+	</array>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>KeepAlive</key>
+	<true/>
+	<key>ThrottleInterval</key>
+	<integer>10</integer>
+	<key>StandardOutPath</key>
+	<string>/Users/eric/Library/Logs/iogear-control.log</string>
+	<key>StandardErrorPath</key>
+	<string>/Users/eric/Library/Logs/iogear-control.log</string>
+</dict>
+</plist>
